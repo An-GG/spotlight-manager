@@ -1,7 +1,7 @@
 #!/usr/local/bin/node
 
 // TODO: Filter nested paths, ex node_modules with node_modules inside. Those don't need to double filter. 
-
+// TODO: tell users to open settings > security priv > priv > give full disk access to terminal
 const readline = require("readline");
 const { exec } = require("child_process");
 const path_module = require('path');

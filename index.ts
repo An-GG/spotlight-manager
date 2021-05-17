@@ -78,6 +78,7 @@ async function main() {
         case "add-exclude"      :   cmd_add(args);      break;
         case "remove-exclude"   :   cmd_remove(args);   break;
         case "list-excludes"    :   cmd_list(args);     break;
+        case "job"              :   cmd_job(args);      break;
         default:
             console.log("Invalid usage: no such subcommand");
             console.log(USAGE);
@@ -195,7 +196,6 @@ async function cmd_exclude(args:string[]) {
 
 }
 function cmd_setup(args:string[]) {
-
     
 
 }
@@ -208,6 +208,11 @@ function cmd_remove(args:string[]) {
 function cmd_list(args:string[]) {
 
 }
+function cmd_job(args:string[]) {
+    cmd_exclude(args);
+    process.exit(0);
+}
+
 
 main();
 

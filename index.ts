@@ -29,19 +29,19 @@ SUBCOMMANDS:
         --force                 Do not ask for confirmation, useful for 
                                 calling from another script.
 
-    setup-exclude   
-                    Set up exclusions manager to periodically search for dirs 
-                    that match added exclude rules and exclude them automatically.
+    job   
+                    Search for any new exclusions that match saved 
+                    exclusion rules and exclude all at once. (use for cron job)
 
-    add-exclude     <DIRNAME_TO_EXCLUDE> <SEARCH_DIR (optional)>
-                    Add exclusion rule (checked periodically).
+    add             <DIRNAME_TO_EXCLUDE> <SEARCH_DIR (optional)>
+                    Add exclusion rule to be checked by job.
 
-    remove-exclude  <DIRNAME_TO_EXCLUDE> <SEARCH_DIR>
+    remove          <DIRNAME_TO_EXCLUDE> <SEARCH_DIR>
                     Remove exclusion rule.
 
-    list-excludes   [--showPaths] 
+    list            [--showPaths] 
                     List all added exclude rules. (Only lists rules added via 
-                    <add-exclude>. Rules added directly via <exclude> subcommand
+                    <add>. Rules added directly via <exclude> subcommand
                     are not tracked.)
 
         --showPaths             Print all added exclude rules and all 
@@ -57,12 +57,7 @@ if (process.argv.includes("-h") || process.argv.includes("--help")) {
     process.exit(0);
 }
 
-// Set up args
 
-
-
-
-// Ask before scanning
 async function main() {
 
     if (!process.argv[2]) { 
@@ -73,17 +68,17 @@ async function main() {
     let subcommand = process.argv[2];
     let args = process.argv.slice(3);
     switch (subcommand) {
-        case "exclude"          :   cmd_exclude(args);  break;
-        case "setup-exclude"    :   cmd_setup(args);    break;
-        case "add-exclude"      :   cmd_add(args);      break;
-        case "remove-exclude"   :   cmd_remove(args);   break;
-        case "list-excludes"    :   cmd_list(args);     break;
-        case "job"              :   cmd_job(args);      break;
+        case "exclude"          :   await cmd_exclude(args);  break;
+        case "add"              :   await cmd_add(args);      break;
+        case "remove"           :   await cmd_remove(args);   break;
+        case "list"             :   await cmd_list(args);     break;
+        case "job"              :   await cmd_job(args);      break;
         default:
             console.log("Invalid usage: no such subcommand");
             console.log(USAGE);
             process.exit(1);
     }
+    process.exit(0);
 }
 
 async function cmd_exclude(args:string[]) {
@@ -99,7 +94,7 @@ async function cmd_exclude(args:string[]) {
     }
 
     let searchdir:string = process.env.PWD;
-    if (args[1]) {
+    if (args[1] && args[1] != '--force') {
         searchdir = args[1];
     }
     if (searchdir.includes("~")) {
@@ -195,22 +190,80 @@ async function cmd_exclude(args:string[]) {
     
 
 }
-function cmd_setup(args:string[]) {
-    
-
+function cmd_job(args:string[]) {
+    let es = get_excludes();
+    for (let e of es) {
+        if (e.length < 1) { continue; }
+        let name = e.split(" ~~~ ")[0];
+        let base = e.split(" ~~~ ")[1];
+        cmd_exclude([name, base, "--force"]);
+    }
 }
 function cmd_add(args:string[]) {
-
+    let toadd = get_exclude_info(args);
+    let line = toadd.name + " ~~~ " + toadd.base
+    let es = get_excludes();
+    if (es.includes(line)) { throw new Error('This rule already exists in the excludes file.'); }
+    es.push(line);
+    set_excludes(es);
 }
 function cmd_remove(args:string[]) {
-
+    let ex = get_exclude_info(args);
+    let line = ex.name + " ~~~ " + ex.base;
+    let es = get_excludes();
+    let newlist = [];
+    for (let e of es) {
+        if (e.length < 1) { continue; }
+        if (e != line) {
+            newlist.push(e);
+        }
+    }
+    set_excludes(newlist);
 }
 function cmd_list(args:string[]) {
-
+    // TODO: full option
+    let es = get_excludes();
+    for (let l of es) {
+        if (l.length < 1) { continue; }
+        let secndstr = l.replace(" ~~~ ", " inside of: ");
+        console.log("Searching for " + secndstr);
+    }
 }
-function cmd_job(args:string[]) {
-    cmd_exclude(args);
-    process.exit(0);
+
+function get_exclude_info(args:string[]):{ name:string, base:string }  {
+    let exclude_name;
+    if (args[0]) {
+        exclude_name = args[0];
+    } else {
+        console.log("First Argument Missing!");
+        console.log(USAGE);
+        process.exit(1);
+    }
+
+    let searchdir:string = process.env.PWD;
+    if (args[1] && args[1] != '--force') {
+        searchdir = args[1];
+    }
+    if (searchdir.includes("~")) {
+        searchdir.replace("~", process.env.HOME)
+    }
+    return { name:exclude_name, base:searchdir };
+}
+
+
+let fname = ".spotlight-manager";
+let dfpath = process.env.HOME + "/" + fname
+function get_excludes():string[] {
+    if (!fs.existsSync(dfpath)) { fs.writeFileSync(dfpath, ""); }
+    let dotfs = fs.readFileSync(dfpath).toString().split('\n');
+    return dotfs;
+}
+function set_excludes(excludes:string[]) {
+    let s = "";
+    for (let e of excludes) {
+        s+=e;
+    }
+    fs.writeFileSync(dfpath, s);
 }
 
 

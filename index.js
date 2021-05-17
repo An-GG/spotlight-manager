@@ -1,122 +1,135 @@
-#!/usr/local/bin/node
-
-// TODO: Filter nested paths, ex node_modules with node_modules inside. Those don't need to double filter. 
-// TODO: tell users to open settings > security priv > priv > give full disk access to terminal
-const readline = require("readline");
-const { exec } = require("child_process");
-const path_module = require('path');
-
-const rl = readline.createInterface({
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const readline_1 = __importDefault(require("readline"));
+const plist_1 = __importDefault(require("plist"));
+const fast_glob_1 = __importDefault(require("fast-glob"));
+const fs_1 = __importDefault(require("fs"));
+const child_process_1 = __importDefault(require("child_process"));
+let rl = readline_1.default.createInterface({
     input: process.stdin,
     output: process.stdout
 });
+let PLIST_PATH = "/System/Volumes/Data/.Spotlight-V100/VolumeConfiguration.plist";
+let USAGE = `
+SPOTLIGHT_EXCLUDE USAGE:
 
-// Check for args
+spotlight_exclude <DIRNAME_TO_EXCLUDE> <SEARCH_DIR (optional)> [flags]
 
-let path = process.env.PWD;
+    <DIRNAME_TO_EXCLUDE>    Name of directory you want to exclude.
+
+    <SEARCH_DIR>            The directory in which to recursively search.
+
+    FLAGS:
+    --force                 Do not ask for confirmation for anything, useful for 
+                            calling from another script.
+
+    -h | --help             Print this page.
+
+Example:
+spotlight_exclude node_modules ~/Documents/ --force
+`;
+if (process.argv.includes("-h") || process.argv.includes("--help")) {
+    console.log(USAGE);
+    process.exit(0);
+}
+// Set up args
+let exclude_name;
 if (process.argv[2]) {
-	path = process.argv[2];
+    exclude_name = process.argv[2];
 }
-
-let exclude_name = "node_modules";
+else {
+    console.log("First Argument Missing!");
+    console.log(USAGE);
+}
+let searchdir = process.env.PWD;
 if (process.argv[3]) {
-	exclude_name = process.argv[3];
+    searchdir = process.argv[3];
 }
-
-
-let pledit = "/usr/libexec/PlistBuddy";
-let plistOperation = (op, pass, callback) => {
-	exec(`printf "` + pass + `\n" | sudo -S ` + pledit + ` ` + op, function(a,b,c) { callback(a,b,c); });
+if (searchdir.includes("~")) {
+    searchdir.replace("~", process.env.HOME);
 }
-
-rl.question("Search for directories matching " + exclude_name + " in " + path + " ? (y/n) ", function(a1) {
-	if (a1.toUpperCase() != "Y") { process.exit(0); }
-	
-	rl.question("Password:", function(pass) {
-		rl.stdoutMuted = false;
-		rl.history = rl.history.slice(1);
-		console.log("\nScanning...\n");
-
-		exec(`printf "` + pass + `\n" | sudo -S find ` + path + ` -type d -name '` + exclude_name + `' -prune`, function(err, out, serr) {
-			if (err) { console.log(serr); process.exit(1); }
-
-			// We have list of dirs, now to alter system prefs
-			let dirsNoFilter = out.split('\n');
-			let dirs = []
-
-			for (let d of dirsNoFilter) {
-				if (d.includes(exclude_name)) {
-					dirs.push(d);
-				}
-			}
-
-			console.log('Found: ');
-			console.log(dirs);
-
-			let plistDir = "/System/Volumes/Data/.Spotlight-V100/VolumeConfiguration.plist";
-
-			// get current list of excluded dirs
-			plistOperation('-c "Print :Exclusions" ' + plistDir, pass, function(plerr, plout, plserr) {
-				let plistDirsNoFilter = plout.split('\n');
-				let plistDirs = [];
-				for (let p of plistDirsNoFilter) {
-					if ((p == '') || (p == 'Array {') || (p == '}')) {
-					} else {
-						plistDirs.push(p.match(/\S.*/gm)[0]); // take out front spaces
-					}
-				}
-
-				let diffDirs = [];
-				for (let newDir of dirs) {
-					let newResolved = path_module.resolve(newDir);
-					let isDifferent = true;
-					for (let plDir of plistDirs) {
-						if (path_module.resolve(plDir) == newResolved) {
-							isDifferent = false;	
-						}
-					}
-					if (isDifferent) {
-						diffDirs.push(newDir);
-					}
-				}
-				console.log("\nNot already excluded:");
-				for (let d of diffDirs) { console.log(d); }
-				console.log("\n");
-				console.log(diffDirs.length + " directories were found that match the name " + exclude_name + " inside of " + path + " that are not already present in Spotlight's exclude list.");
-				if (diffDirs.length == 0) {
-					process.exit(0);
-				} else {
-					rl.question("\nWould you like to append these (" + diffDirs.length + ") item(s) to VolumeConfiguration.plist?\nThis tells Spotlight to ignore these directories. (y/n) ", function(edit) {
-						if (edit.toUpperCase() != "Y") { process.exit(0); }
-
-						for (let d of diffDirs) {
-							if (d.includes(exclude_name)) {
-								plistOperation('-c "Add :Exclusions: string ' + d + '" ' + plistDir, pass, function(adderr, ao, asr) { if (adderr) { console.log(asr); } }); 
-							}
-						}
-						exec(`printf "` + pass + `\n" | sudo -S launchctl stop com.apple.metadata.mds`);
-						exec(`printf "` + pass + `\n" | sudo -S launchctl start com.apple.metadata.mds`);
-						rl.question("Done. Double check in System Preferences > Spotlight > Privacy to verify manually? (y/n) ", function(verify) {
-							if (verify.toUpperCase() != "Y") { process.exit(0); }
-							exec('open -b com.apple.systempreferences /System/Library/PreferencePanes/Spotlight.prefPane');
-							process.exit(0);
-						});
-					});
-				}
-			});
-		});
-	});
-
-	// mute stdout for PW
-	rl.stdoutMuted = true;
-	rl._writeToOutput = function _writeToOutput(stringToWrite) {
-  		if (rl.stdoutMuted)
-			rl.output.write('*');
-		else
-    			rl.output.write(stringToWrite);
-	};
-
-});
-
-
-
+let confirm = !process.argv.includes('--force');
+// Ask before scanning
+async function main() {
+    if (!confirm) {
+        let m = await getMatches();
+        let pl_f = generateNewPlist(m);
+        writePlist(pl_f);
+        restartMDS();
+        finalMessage();
+        process.exit(0);
+    }
+    else {
+        let m = await getMatches();
+        rl.question("Confirm (y/N)?", (ans) => {
+            if (ans.toLowerCase() == 'y') {
+                let pl_f = generateNewPlist(m);
+                writePlist(pl_f);
+                restartMDS();
+                finalMessage();
+            }
+            process.exit(0);
+        });
+    }
+}
+main();
+async function getMatches() {
+    let dirs = await fast_glob_1.default(["**/" + exclude_name], {
+        ignore: ["**/" + exclude_name + "/*/**"],
+        onlyDirectories: true,
+        cwd: searchdir,
+        absolute: true,
+    });
+    for (let d of dirs) {
+        console.log(d);
+    }
+    console.log("\nThese (" + dirs.length + ") directories will be added to Spotlight's excluded dirs list, if not added already.\n");
+    return dirs;
+}
+// Returns modified plist
+function generateNewPlist(matches) {
+    let pl_file = "";
+    try {
+        pl_file = fs_1.default.readFileSync(PLIST_PATH).toString();
+    }
+    catch (e) {
+        throw new Error('Unable to read spotlight plist at ' + PLIST_PATH + '\nAre you sure you are running as sudo ?\n' +
+            'In future versions of macOS beyond 11.2 (Big Sur) the plist path may have moved.');
+    }
+    let pl = plist_1.default.parse(pl_file);
+    let new_m = [];
+    for (let m of matches) {
+        if (!pl['Exclusions'].includes(m)) {
+            new_m.push(m);
+            pl['Exclusions'].push(m);
+        }
+    }
+    console.log("\n\nNew Paths:");
+    for (let m of new_m) {
+        console.log(m);
+    }
+    console.log("\n" + new_m.length + "/" + matches.length + " paths are not already excluded.");
+    return plist_1.default.build(pl);
+}
+function writePlist(f) {
+    fs_1.default.writeFileSync(PLIST_PATH, f);
+    console.log("Plist updated. Restarting MDS...");
+}
+function restartMDS() {
+    child_process_1.default.exec("launchctl stop com.apple.metadata.mds", (err, stdout, stderr) => {
+        console.log(err + "" + stdout + "" + stderr);
+        child_process_1.default.exec("launchctl start com.apple.metadata.mds", (err2, stdout2, stderr2) => {
+            console.log(err2 + "" + stdout2 + "" + stderr2);
+            if (stderr || stderr2) {
+                console.log("There was an error restarting the com.apple.metadata.mds service, " +
+                    "which is required for changes to take effect. Restarting your computer will also restart the service");
+            }
+        });
+    });
+}
+function finalMessage() {
+    console.log("\nDone. Verify that new directories were added by navigating to System Preferences > Spotlight > Privacy");
+}

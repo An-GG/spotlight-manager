@@ -11,6 +11,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "fast-glob": "^3.2.5",
+    "plist": "^3.0.2",
     "sudo-prompt": "^9.2.1"
+  },
+  "devDependencies": {
+    "@types/glob": "^7.1.3",
+    "@types/node": "^15.3.0"
   }
 }

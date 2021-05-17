@@ -1,7 +1,7 @@
 {
-  "name": "spotlight-exclude",
+  "name": "spotlight-manager",
   "bin": {
-    "spotlight-exclude": "index.js"
+    "spotlight-manager": "index.js"
   },
   "version": "0.1.1",
   "description": "Manage macOS Spotlight's indexing. Automatically blacklist all directories from indexing that match an expression, configure to run periodically.",
@@ -9,13 +9,18 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "spotlight",
+    "index",
+    "exclude",
+    "mac",
+    "prevent"
+  ],
   "author": "Ankush Girotra",
   "license": "ISC",
   "dependencies": {
     "fast-glob": "^3.2.5",
-    "plist": "^3.0.2",
-    "sudo-prompt": "^9.2.1"
+    "plist": "^3.0.2"
   },
   "devDependencies": {
     "@types/glob": "^7.1.3",
@@ -23,10 +28,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/An-GG/spotlight-exclude.git"
+    "url": "git+https://github.com/An-GG/spotlight-manager.git"
   },
   "bugs": {
-    "url": "https://github.com/An-GG/spotlight-exclude/issues"
+    "url": "https://github.com/An-GG/spotlight-manager/issues"
   },
-  "homepage": "https://github.com/An-GG/spotlight-exclude#readme"
+  "homepage": "https://github.com/An-GG/spotlight-manager#readme"
 }

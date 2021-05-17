@@ -5,6 +5,8 @@ import plist from 'plist';
 import glob from 'fast-glob';
 import fs from 'fs';
 import child_process from 'child_process';
+import globToRegExp from 'glob-to-regexp';
+
 
 let rl = readline.createInterface({
     input: process.stdin,
@@ -69,6 +71,7 @@ async function main() {
     let args = process.argv.slice(3);
     switch (subcommand) {
         case "exclude"          :   await cmd_exclude(args);  break;
+        case "unexclude"        :   await cmd_unexclude(args);break;
         case "add"              :   await cmd_add(args);      break;
         case "remove"           :   await cmd_remove(args);   break;
         case "list"             :   await cmd_list(args);     break;
@@ -78,7 +81,6 @@ async function main() {
             console.log(USAGE);
             process.exit(1);
     }
-    process.exit(0);
 }
 
 async function cmd_exclude(args:string[]) {
@@ -187,9 +189,71 @@ async function cmd_exclude(args:string[]) {
         console.log("\nDone. Verify that new directories were added by navigating to System Preferences > Spotlight > Privacy");
     }
     
+}
+
+function cmd_unexclude(args:string[]) {
+
+    let confirm = !args.includes('--force');
+    let exclude_name;
+    if (args[0]) {
+        exclude_name = args[0];
+    } else {
+        console.log("First Argument Missing!");
+        console.log(USAGE);
+        process.exit(1);
+    }
+    
+    let searchdir:string = process.env.PWD;
+    if (args[1] && args[1] != '--force') {
+        searchdir = args[1];
+    }
+    if (searchdir.includes("~")) {
+        searchdir.replace("~", process.env.HOME)
+    }
+
+
+    let plf;
+    try { plf = fs.readFileSync(PLIST_PATH); } catch(e) {
+        throw new Error('Unable to read spotlight plist at ' + PLIST_PATH + '\nAre you sure you are running as sudo ?\n'+
+                           'In future versions of macOS beyond 11.2 (Big Sur) the plist path may have moved.');
+    }
+
+    let p = plist.parse(plf.toString());
+
+    let excscopy: string[] = JSON.parse(JSON.stringify(p['Exclusions']));
+    let newexcs = [];
+    let rming = [];
+    let re = globToRegExp(searchdir+"/**/"+exclude_name);
+    
+    for (let exc of excscopy) {
+        if (!re.test(exc)) {
+            newexcs.push(exc);
+        } else {
+            rming.push(exc);
+        }
+    }
+
+    p['Exclusions'] = newexcs;
+   
+    for (let r of rming) { console.log(r); }
+    console.log("Found ("+rming.length+") excluded dirs that match the expression:");
+    console.log(searchdir+"/**/"+exclude_name);
     
 
+    if (confirm) {
+       rl.question("\nRemove all from Spotlight excluded list? (y/N)", (ans)=>{
+           if (ans.toLowerCase() == 'y') { fs.writeFileSync(PLIST_PATH, plist.build(p)); process.exit(0); }
+           process.exit(1);
+       });
+    } else {
+        fs.writeFileSync(PLIST_PATH, plist.build(p));
+        process.exit(0);
+    }
 }
+
+
+
+
 function cmd_job(args:string[]) {
     let es = get_excludes();
     for (let e of es) {

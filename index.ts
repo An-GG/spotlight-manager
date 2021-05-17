@@ -1,3 +1,5 @@
+#!/usr/local/bin/node
+
 import readline from 'readline';
 import plist from 'plist';
 import glob from 'fast-glob';
@@ -13,20 +15,20 @@ let PLIST_PATH = "/System/Volumes/Data/.Spotlight-V100/VolumeConfiguration.plist
 let USAGE = `
 SPOTLIGHT_EXCLUDE USAGE:
 
-spotlight_exclude <DIRNAME_TO_EXCLUDE> <SEARCH_DIR (optional)> [flags]
+spotlight-exclude <DIRNAME_TO_EXCLUDE> <SEARCH_DIR (optional)> [flags]
 
     <DIRNAME_TO_EXCLUDE>    Name of directory you want to exclude.
 
     <SEARCH_DIR>            The directory in which to recursively search.
 
     FLAGS:
-    --force                 Do not ask for confirmation for anything, useful for 
+    --force                 Do not ask for confirmation, useful for 
                             calling from another script.
 
     -h | --help             Print this page.
 
 Example:
-spotlight_exclude node_modules ~/Documents/ --force
+spotlight-exclude node_modules ~/Documents/ --force
 `;
 
 if (process.argv.includes("-h") || process.argv.includes("--help")) {

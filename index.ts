@@ -34,19 +34,27 @@ SUBCOMMANDS:
         <DIRNAME_TO_EXCLUDE>    Name of directory you want to exclude.
 
         <SEARCH_DIR>            The directory in which to recursively search.
+                                (optional): Will use cwd by default.
 
         --force                 Do not ask for confirmation, useful for 
                                 calling from another script.
 
+    unexclude       <DIRNAME_TO_UNEXCLUDE> <SEARCH_DIR (optional)> [--force]
+                    Remove excluded dirs matching these rules from spotlight's 
+                    exclusions. (renable indexing of this directory)
     job   
                     Search for any new exclusions that match saved 
                     exclusion rules and exclude all at once. (use for cron job)
+                        <!> NOTE: job can only exclude new exclusions. <!> 
+                    This prevents unrelated exclusions from being affected.
 
-    add             <DIRNAME_TO_EXCLUDE> <SEARCH_DIR (optional)>
-                    Add exclusion rule to be checked by job.
+    add             <DIRNAME_TO_EXCLUDE> <SEARCH_DIR (optional)> [--force]
+                    Add exclusion rule to be checked by job, and run job once.
 
-    remove          <DIRNAME_TO_EXCLUDE> <SEARCH_DIR>
-                    Remove exclusion rule.
+    remove          <DIRNAME_TO_EXCLUDE> <SEARCH_DIR> [--force]
+                    Remove exclusion rule checked by job, and run !! unexclude !!
+                    NOT job because job does not remove exclusions.
+                    <!> Assumes matching exclusions were all added by manager <!>
 
     list            [--showPaths] 
                     List all added exclude rules. (Only lists rules added via 
@@ -54,7 +62,8 @@ SUBCOMMANDS:
                     are not tracked.)
 
         --showPaths             Print all added exclude rules and all 
-                                actual paths the rule has excluded.
+                                actual paths the rule matches that are
+                                excluded in the plist.
 
 FLAGS:
 
@@ -262,7 +271,7 @@ async function cmd_add(args:string[]): Promise<number> {
     if (es.includes(line)) { throw new Error('This rule already exists in the excludes file.'); }
     es.push(line);
     set_excludes(es);
-    return 0;
+    return cmd_job([]);
 }
 
 async function cmd_remove(args:string[]): Promise<number> {
@@ -277,7 +286,7 @@ async function cmd_remove(args:string[]): Promise<number> {
         }
     }
     set_excludes(newlist);
-    return 0;
+    return cmd_unexclude(args);
 }
 
 async function cmd_list(args:string[]): Promise<number> {

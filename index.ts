@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import readline from 'readline';
 import plist from 'plist';
 import glob from 'fast-glob';

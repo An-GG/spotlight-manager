@@ -6,12 +6,20 @@ import glob from 'fast-glob';
 import fs from 'fs';
 import child_process from 'child_process';
 import globToRegExp from 'glob-to-regexp';
+import { promisify } from 'util';
 
 
-let rl = readline.createInterface({
+let rl:readline.Interface = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
+function rlqconvert(query:string, cb:(er:Error, response:string)=>void) {
+    rl.question(query, (ans)=>{
+        cb(null, ans); 
+    });
+}
+let question_async = promisify(rlqconvert)
+
 
 let PLIST_PATH = "/System/Volumes/Data/.Spotlight-V100/VolumeConfiguration.plist";
 let USAGE = `
@@ -61,6 +69,7 @@ if (process.argv.includes("-h") || process.argv.includes("--help")) {
 
 
 async function main() {
+    
 
     if (!process.argv[2]) { 
         console.log("Invalid usage: subcommand missing");
@@ -81,10 +90,12 @@ async function main() {
             console.log(USAGE);
             process.exit(1);
     }
+    process.exit(0);
 }
 
-async function cmd_exclude(args:string[]) {
 
+
+async function cmd_exclude(args:string[]):Promise<number> {
     let confirm = !args.includes('--force');
     let exclude_name;
     if (args[0]) {
@@ -92,7 +103,7 @@ async function cmd_exclude(args:string[]) {
     } else {
         console.log("First Argument Missing!");
         console.log(USAGE);
-        process.exit(1);
+        return 1;
     }
 
     let searchdir:string = process.env.PWD;
@@ -103,29 +114,15 @@ async function cmd_exclude(args:string[]) {
         searchdir.replace("~", process.env.HOME)
     }
 
-    if (!confirm) {
-    
-        let m = await getMatches();
-        let pl_f = generateNewPlist(m);
-        writePlist(pl_f);        
-        restartMDS();
-        finalMessage();
-        process.exit(0);
-
-    }  else {
-
-        let m = await getMatches();
-        rl.question("Confirm (y/N)?", (ans)=>{
-            if (ans.toLowerCase() == 'y') {
-                let pl_f = generateNewPlist(m);
-                writePlist(pl_f);
-                restartMDS();
-                finalMessage();
-            }
-            process.exit(0);
-        });
-
+    let m = await getMatches();
+    if (confirm) { 
+        if ((await question_async("Confirm (y/N)?")).toLowerCase() != 'y') { return 1; }
     }
+    let pl_f = generateNewPlist(m);
+    writePlist(pl_f);
+    restartMDS();
+    finalMessage();
+    return 0;
 
     async function getMatches(): Promise<string[]> {
         let dirs = await glob(["**/" + exclude_name], {
@@ -191,7 +188,7 @@ async function cmd_exclude(args:string[]) {
     
 }
 
-function cmd_unexclude(args:string[]) {
+async function cmd_unexclude(args:string[]): Promise<number> {
 
     let confirm = !args.includes('--force');
     let exclude_name;
@@ -200,7 +197,7 @@ function cmd_unexclude(args:string[]) {
     } else {
         console.log("First Argument Missing!");
         console.log(USAGE);
-        process.exit(1);
+        return 1;
     }
     
     let searchdir:string = process.env.PWD;
@@ -238,30 +235,26 @@ function cmd_unexclude(args:string[]) {
     for (let r of rming) { console.log(r); }
     console.log("Found ("+rming.length+") excluded dirs that match the expression:");
     console.log(searchdir+"/**/"+exclude_name);
-    
 
     if (confirm) {
-       rl.question("\nRemove all from Spotlight excluded list? (y/N)", (ans)=>{
-           if (ans.toLowerCase() == 'y') { fs.writeFileSync(PLIST_PATH, plist.build(p)); process.exit(0); }
-           process.exit(1);
-       });
-    } else {
-        fs.writeFileSync(PLIST_PATH, plist.build(p));
-        process.exit(0);
+        if ((await question_async("\nRemove all from Spotlight excluded list? (y/N)")).toLowerCase() != 'y') { return 1; }
     }
+    fs.writeFileSync(PLIST_PATH, plist.build(p));
+    return 0;
 }
 
 
 
 
-function cmd_job(args:string[]) {
+async function cmd_job(args:string[]): Promise<number> {
     let es = get_excludes();
     for (let e of es) {
         if (e.length < 1) { continue; }
         let name = e.split(" ~~~ ")[0];
         let base = e.split(" ~~~ ")[1];
-        cmd_exclude([name, base, "--force"]);
+        await cmd_exclude([name, base, "--force"]);
     }
+    return 0;
 }
 function cmd_add(args:string[]) {
     let toadd = get_exclude_info(args);
@@ -301,7 +294,7 @@ function get_exclude_info(args:string[]):{ name:string, base:string }  {
     } else {
         console.log("First Argument Missing!");
         console.log(USAGE);
-        process.exit(1);
+        throw new Error("Invalid argument.");
     }
 
     let searchdir:string = process.env.PWD;
@@ -325,15 +318,9 @@ function get_excludes():string[] {
 function set_excludes(excludes:string[]) {
     let s = "";
     for (let e of excludes) {
-        s+=e;
+        s+=e+"\n";
     }
     fs.writeFileSync(dfpath, s);
 }
 
-
 main();
-
-
-
-
-

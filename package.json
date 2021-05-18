@@ -3,7 +3,7 @@
   "bin": {
     "spotlight-manager": "index.js"
   },
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Manage macOS Spotlight's indexing. Automatically blacklist all directories from indexing that match an expression, configure to run periodically.",
   "main": "index.js",
   "scripts": {

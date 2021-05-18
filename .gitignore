@@ -6,4 +6,6 @@ npm-debug.log
 *.js
 **/*.js
 
+*.swp
+
 dist

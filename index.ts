@@ -300,7 +300,7 @@ async function cmd_list(args:string[]): Promise<number> {
             let plist_str;
             try {
                 plist_str = fs.readFileSync(PLIST_PATH);
-            } catch(e) { throw new Error("Could not read Spotlight PLIST. You may need to run this command using sudo") }
+            } catch(e) { throw new Error("Could not read Spotlight plist. You may need to run this command using sudo.") }
             let p = plist.parse(plist_str.toString());
             let pcount = 0; 
             for (let e of p['Exclusions']) {

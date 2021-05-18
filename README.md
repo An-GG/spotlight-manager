@@ -6,12 +6,17 @@ Manage macOS Spotlight indexing behavior.
 
 If your mac fan just spins up randomly at 100% sometimes, it's probably because of node_modules (or some other large folder with files you don't care about) that's being indexed.
 
-
+## Installation
 ```bash
-spotlight-manager node_modules ~/Documents
+$ npm install -g spotlight-manager
+```
+## Usage
+Prevent Spotlight from accessing any directory that matches (recursively) `node_modules` or any other dir you choose inside a given base directory.
+```bash
+sudo spotlight-manager exclude node_modules ~/Documents
 ```
 
-Prevent Spotlight from accessing any directory that matches (recursively) `node_modules` or any other dir inside a given base directory.
+**NOTE: You will likely need to always run as superuser as R/W access to root owned System plists is necessary.**
 
 
 This has been an issue with Spotlight for years, but now, finally, we developers 
@@ -24,9 +29,9 @@ for all, using a NodeJS command line app to modify undocumented .plists deep wit
 
 I recommend setting up a cron job to run `spotlight-manager job` every week or so. 
 (You will need to run as superuser, add the path of wherever `spotlight-manager` is installed to the sudoers file.)
-Then, use `spotlight-manager add <DIRNAME>` to maintain a list directory-matching rules in `~/.spotlight-manager` which will all be searched for at once in the background.
+Then, use `spotlight-manager add <DIRNAME>` to maintain a list directory-matching rules in `~/.spotlight-manager` which will be searched for and excluded all at once whenever your cron job runs.
 
-```bash
+```ts
 $ spotlight-manager --help
 
 SPOTLIGHT MANAGER:

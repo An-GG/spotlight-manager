@@ -70,9 +70,6 @@ if (process.argv.includes("-h") || process.argv.includes("--help")) {
 
 async function main() {
 
-
-    
-
     if (!process.argv[2]) { 
         console.log("Invalid usage: subcommand missing");
         console.log(USAGE);
@@ -325,26 +322,4 @@ function set_excludes(excludes:string[]) {
     fs.writeFileSync(dfpath, s);
 }
 
-
-function isSuperuser():boolean {
-    let uid = process.env['SUDO_UID'];
-    if (uid) {
-        return true;
-    }
-    return false;
-}
-
-
-if (!isSuperuser()) {
-    console.log("NOT");
-    sudo.exec("spotlight-manager", {
-        name: "Spotlight Manager",
-        env: process.env
-    }, (e,o,r)=>{
-        console.log(e + "\n" +o + "2\n" + r);
-    });
-} else {
-    console.log("IS");
-    main();
-}
-
+main();

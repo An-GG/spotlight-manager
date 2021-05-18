@@ -21,8 +21,7 @@
   "dependencies": {
     "fast-glob": "^3.2.5",
     "glob-to-regexp": "^0.4.1",
-    "plist": "^3.0.2",
-    "sudo-prompt": "^9.2.1"
+    "plist": "^3.0.2"
   },
   "devDependencies": {
     "@types/glob": "^7.1.3",

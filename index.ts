@@ -76,31 +76,28 @@ if (process.argv.includes("-h") || process.argv.includes("--help")) {
 }
 
 
-async function main() {
+async function main():Promise<number> {
 
     if (!process.argv[2]) { 
-        console.log("Invalid usage: subcommand missing");
         console.log(USAGE);
-        process.exit(1);
+        throw new Error("Invalid usage: subcommand missing");
     }
     let subcommand = process.argv[2];
     let args = process.argv.slice(3);
+    let exitcode = 1;
     switch (subcommand) {
-        case "exclude"          :   await cmd_exclude(args);  break;
-        case "unexclude"        :   await cmd_unexclude(args);break;
-        case "add"              :   await cmd_add(args);      break;
-        case "remove"           :   await cmd_remove(args);   break;
-        case "list"             :   await cmd_list(args);     break;
-        case "job"              :   await cmd_job(args);      break;
+        case "exclude"          :   exitcode = await cmd_exclude(args);  break;
+        case "unexclude"        :   exitcode = await cmd_unexclude(args);break;
+        case "add"              :   exitcode = await cmd_add(args);      break;
+        case "remove"           :   exitcode = await cmd_remove(args);   break;
+        case "list"             :   exitcode = await cmd_list(args);     break;
+        case "job"              :   exitcode = await cmd_job(args);      break;
         default:
-            console.log("Invalid usage: no such subcommand");
             console.log(USAGE);
-            process.exit(1);
+            throw new Error("Invalid usage: no such subcommand");
     }
-    process.exit(0);
+    return exitcode;
 }
-
-
 
 async function cmd_exclude(args:string[]):Promise<number> {
     let confirm = !args.includes('--force');
@@ -108,9 +105,8 @@ async function cmd_exclude(args:string[]):Promise<number> {
     if (args[0]) {
         exclude_name = args[0];
     } else {
-        console.log("First Argument Missing!");
         console.log(USAGE);
-        return 1;
+        throw new Error("First Argument Missing!");
     }
 
     let searchdir:string = process.env.PWD;
@@ -176,12 +172,12 @@ async function cmd_exclude(args:string[]):Promise<number> {
     
     function restartMDS() {
         child_process.exec("launchctl stop com.apple.metadata.mds", (err, stdout, stderr) => { 
-            console.log(err +""+ stdout +""+ stderr);
+            if (stderr) { throw stderr; }
             child_process.exec("launchctl start com.apple.metadata.mds", (err2, stdout2, stderr2) => { 
-                console.log(err2 +""+ stdout2 +""+ stderr2);
-    
+                if (stderr2) { throw stderr2; } 
+                
                 if (stderr || stderr2) {
-                    console.log("There was an error restarting the com.apple.metadata.mds service, "+
+                    throw new Error("There was an error restarting the com.apple.metadata.mds service, "+
                                 "which is required for changes to take effect. Restarting your computer will also restart the service");
                 }
             });
@@ -202,9 +198,8 @@ async function cmd_unexclude(args:string[]): Promise<number> {
     if (args[0]) {
         exclude_name = args[0];
     } else {
-        console.log("First Argument Missing!");
         console.log(USAGE);
-        return 1;
+        throw new Error("First Argument Missing!");
     }
     
     let searchdir:string = process.env.PWD;
@@ -325,9 +320,8 @@ function get_exclude_info(args:string[]):{ name:string, base:string }  {
     if (args[0]) {
         exclude_name = args[0];
     } else {
-        console.log("First Argument Missing!");
         console.log(USAGE);
-        throw new Error("Invalid argument.");
+        throw new Error("First Argument Missing!");
     }
 
     let searchdir:string = process.env.PWD;
@@ -371,4 +365,20 @@ function set_excludes(excludes:string[]) {
     fs.writeFileSync(dfpath, s);
 }
 
-main();
+
+async function err_launch() {
+    let c_fgred = "\x1b[31m"
+    let c_bright = "\x1b[1m"
+    let c_reset = "\x1b[0m"
+
+
+    try { process.exit(await main()); } catch(e) {
+        console.log("");
+        console.log(c_bright + c_fgred + "Error:");
+        console.log(c_bright + c_fgred + e.message);
+        console.log(c_reset);
+        process.exit(1);
+    }
+}
+
+err_launch();

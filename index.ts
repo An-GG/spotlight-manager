@@ -7,7 +7,6 @@ import fs from 'fs';
 import child_process from 'child_process';
 import globToRegExp from 'glob-to-regexp';
 import { promisify } from 'util';
-import sudo from 'sudo-prompt';
 
 let rl:readline.Interface = readline.createInterface({
     input: process.stdin,
@@ -255,15 +254,18 @@ async function cmd_job(args:string[]): Promise<number> {
     }
     return 0;
 }
-function cmd_add(args:string[]) {
+
+async function cmd_add(args:string[]): Promise<number> {
     let toadd = get_exclude_info(args);
     let line = toadd.name + " ~~~ " + toadd.base
     let es = get_excludes();
     if (es.includes(line)) { throw new Error('This rule already exists in the excludes file.'); }
     es.push(line);
     set_excludes(es);
+    return 0;
 }
-function cmd_remove(args:string[]) {
+
+async function cmd_remove(args:string[]): Promise<number> {
     let ex = get_exclude_info(args);
     let line = ex.name + " ~~~ " + ex.base;
     let es = get_excludes();
@@ -275,8 +277,10 @@ function cmd_remove(args:string[]) {
         }
     }
     set_excludes(newlist);
+    return 0;
 }
-function cmd_list(args:string[]) {
+
+async function cmd_list(args:string[]): Promise<number> {
     // TODO: full option
     let es = get_excludes();
     for (let l of es) {
@@ -284,6 +288,7 @@ function cmd_list(args:string[]) {
         let secndstr = l.replace(" ~~~ ", " inside of: ");
         console.log("Searching for " + secndstr);
     }
+    return 0;
 }
 
 function get_exclude_info(args:string[]):{ name:string, base:string }  {
@@ -303,17 +308,32 @@ function get_exclude_info(args:string[]):{ name:string, base:string }  {
     if (searchdir.includes("~")) {
         searchdir.replace("~", process.env.HOME)
     }
-    return { name:exclude_name, base:searchdir };
+    while (searchdir.endsWith('/')) {
+        searchdir = searchdir.substring(0, searchdir.length - 1);
+    }
+    while (exclude_name.endsWith('/')) {
+        exclude_name = exclude_name.substring(0, exclude_name.length - 1);
+    }
+    while (exclude_name.startsWith('/')) {
+        exclude_name = exclude_name.substring(1);
+    }
+    searchdir = searchdir.replace("//", "/");
+    exclude_name = exclude_name.replace("//", "/");
+
+    let out = { name:exclude_name, base:searchdir };
+    return out;
 }
 
 
 let fname = ".spotlight-manager";
 let dfpath = process.env.HOME + "/" + fname
+
 function get_excludes():string[] {
     if (!fs.existsSync(dfpath)) { fs.writeFileSync(dfpath, ""); }
     let dotfs = fs.readFileSync(dfpath).toString().split('\n');
     return dotfs;
 }
+
 function set_excludes(excludes:string[]) {
     let s = "";
     for (let e of excludes) {

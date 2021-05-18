@@ -7,7 +7,7 @@ import fs from 'fs';
 import child_process from 'child_process';
 import globToRegExp from 'glob-to-regexp';
 import { promisify } from 'util';
-
+import sudo from 'sudo-prompt';
 
 let rl:readline.Interface = readline.createInterface({
     input: process.stdin,
@@ -69,6 +69,8 @@ if (process.argv.includes("-h") || process.argv.includes("--help")) {
 
 
 async function main() {
+
+
     
 
     if (!process.argv[2]) { 
@@ -323,4 +325,26 @@ function set_excludes(excludes:string[]) {
     fs.writeFileSync(dfpath, s);
 }
 
-main();
+
+function isSuperuser():boolean {
+    let uid = process.env['SUDO_UID'];
+    if (uid) {
+        return true;
+    }
+    return false;
+}
+
+
+if (!isSuperuser()) {
+    console.log("NOT");
+    sudo.exec("spotlight-manager", {
+        name: "Spotlight Manager",
+        env: process.env
+    }, (e,o,r)=>{
+        console.log(e + "\n" +o + "2\n" + r);
+    });
+} else {
+    console.log("IS");
+    main();
+}
+

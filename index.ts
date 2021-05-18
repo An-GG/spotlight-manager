@@ -281,12 +281,32 @@ async function cmd_remove(args:string[]): Promise<number> {
 }
 
 async function cmd_list(args:string[]): Promise<number> {
-    // TODO: full option
     let es = get_excludes();
     for (let l of es) {
         if (l.length < 1) { continue; }
+
+        let nm = l.split(" ~~~ ")[0];
+        let bs = l.split(" ~~~ ")[1];
+
         let secndstr = l.replace(" ~~~ ", " inside of: ");
         console.log("Searching for " + secndstr);
+
+        if (args.includes('--showPaths')) {
+            let r = globToRegExp(bs + "/**/" + nm);
+            let plist_str;
+            try {
+                plist_str = fs.readFileSync(PLIST_PATH);
+            } catch(e) { throw new Error("Could not read Spotlight PLIST. You may need to run this command using sudo") }
+            let p = plist.parse(plist_str.toString());
+            let pcount = 0; 
+            for (let e of p['Exclusions']) {
+                if (r.test(e)) {
+                    console.log("    "+e);
+                    pcount++;
+                }
+            }
+            console.log("    ---- ("+pcount+") matching directories found here. ----");
+        }
     }
     return 0;
 }

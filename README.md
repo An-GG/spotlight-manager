@@ -1,6 +1,8 @@
 # spotlight-manager
 
-Manage macOS Spotlight indexing behavior.
+Manage macOS Spotlight indexing behavior (without modifying your filesystem).
+- Automatically add certain directories to System Preferences > Spotlight > Privacy
+- This utility does **not** create `.metadata_never_index` files.
 
 ## finally: humanity has achieved 0 fanspin idle
 

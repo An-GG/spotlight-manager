@@ -12,6 +12,8 @@ If your mac fan just spins up randomly at 100% sometimes, it's probably because 
 ```bash
 $ npm install -g spotlight-manager
 ```
+Ensure that your terminal app has full disk access before you execute the command in the Usage section below. Go to `System Preferences > Security & Privacy > Full Disk Access`.
+
 ## Usage
 Prevent Spotlight from accessing any directory that matches (recursively) `node_modules` or any other dir you choose inside a given base directory.
 ```bash
